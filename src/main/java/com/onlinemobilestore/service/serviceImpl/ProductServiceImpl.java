@@ -5,7 +5,9 @@ import com.onlinemobilestore.repository.ProductRepository;
 import com.onlinemobilestore.service.ProductService;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -14,9 +16,9 @@ public class ProductServiceImpl implements ProductService {
         this.productRepository = productRepository;
     }
 
-
     @Override
     public List<Product> findAll() {
         return productRepository.findAll();
     }
+
 }

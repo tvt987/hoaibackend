@@ -12,7 +12,5 @@ import java.util.Map;
 
 @Repository
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Integer> {
-
-
         List<OrderDetail> findAllByOrderId(int user_id);
 }

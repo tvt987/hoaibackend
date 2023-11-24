@@ -22,8 +22,7 @@ import java.util.*;
 @RequestMapping("/admin")
 @CrossOrigin
 public class UserAdminRestController {
-//    @Autowired
-//    private AuthenticationManager authenticationManager;trademarkRepository
+
 @Autowired
 private TrademarkRepository trademarkRepository;
     @Autowired
@@ -300,6 +299,7 @@ private UserRepository userRepository;
         } catch(Exception e) {
             return null;
         }
+        return null;
     }
 
     @GetMapping("/getOrders/{userId}")

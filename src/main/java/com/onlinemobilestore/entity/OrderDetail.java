@@ -29,6 +29,10 @@ public class OrderDetail {
     public OrderDetail(Object o, int i, double price, Date date, Date date1, int id, int id1) {
     }
 
+    public OrderDetail() {
+
+    }
+
     public int getId() {
         return id;
     }

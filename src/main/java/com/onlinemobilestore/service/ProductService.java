@@ -8,4 +8,5 @@ import java.util.List;
 @Component
 public interface ProductService {
     List<Product> findAll();
+
 }
