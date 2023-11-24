@@ -224,7 +224,7 @@ private UserRepository userRepository;
     }
 
 
-
+    @CrossOrigin("*")
     @PostMapping("/signin/{email}/{password}")
     public User authenticateUser(@PathVariable("email") String email, @PathVariable("password") String password) {
         try {
@@ -275,7 +275,7 @@ private UserRepository userRepository;
         }
     }
 
-    @GetMapping("/getOrderNew/{userId}/{productId}")
+    @PostMapping("/getOrderNew/{userId}/{productId}")
     public OrderDetailz getOrderNew(@PathVariable("userId") int userId ,
                                           @PathVariable("productId") int productId){
         try {
@@ -296,6 +296,7 @@ private UserRepository userRepository;
                       product.getPrice(), product.getQuantity(), new Date());
 
             }
+            return null;
 
         } catch(Exception e) {
             return null;

@@ -6,7 +6,7 @@ import com.onlinemobilestore.entity.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
+@CrossOrigin
 @Controller
 public class AccountController {
     @GetMapping("/homepage")

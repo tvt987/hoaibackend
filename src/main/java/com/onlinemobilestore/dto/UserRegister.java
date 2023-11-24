@@ -2,7 +2,9 @@ package com.onlinemobilestore.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
+@CrossOrigin
 public class UserRegister {
     @NotBlank
     private String fullName;

@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 
 import java.sql.Time;
@@ -22,6 +23,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @Table(name = "user")
+@CrossOrigin
 public class User {
     public User() {
     }
