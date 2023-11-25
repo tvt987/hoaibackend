@@ -1,5 +1,6 @@
 package com.onlinemobilestore.service.serviceImpl;
 
+import com.onlinemobilestore.dto.OrderForUserDTO;
 import com.onlinemobilestore.dto.ProductInOrderDTO;
 import com.onlinemobilestore.entity.*;
 import com.onlinemobilestore.repository.OrderDetailRepository;
@@ -11,6 +12,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,5 +60,50 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Error creating order and order detail", e);
         }
     }
+
+    @Override
+    public  List<OrderForUserDTO>  getOrdersForUser(int userId) {
+        try {
+            List<Order> orders = orderRepository.findByUserId(userId);
+            int totalProducts = orders.stream()
+                    .flatMap(order -> order.getOrderDetails().stream())
+                    .mapToInt(OrderDetail::getQuantity)
+                    .sum();
+            List<OrderForUserDTO> orderForUser = orders.stream()
+                    .map(order -> new OrderForUserDTO(order.getId(), order.getTotal(), totalProducts, order.isState(), order.getCreateDate()))
+                    .collect(Collectors.toList());
+            return orderForUser;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
+    public List<OrderForUserDTO> deleteOrderStateIs(int orderId, int userId) {
+        try {
+            List<Order> orders = orderRepository.findByUserId(userId);
+            List<Order> remainingOrders = orders.stream()
+                    .filter(order -> order.getId() != orderId || order.isState())
+                    .collect(Collectors.toList());
+            orders.stream()
+                    .filter(order -> order.getId() == orderId && !order.isState())
+                    .forEach(orderRepository::delete);
+
+            int totalProducts = remainingOrders.stream()
+                    .flatMap(order -> order.getOrderDetails().stream())
+                    .mapToInt(OrderDetail::getQuantity)
+                    .sum();
+            List<OrderForUserDTO> orderForUsers = remainingOrders.stream()
+                    .map(order -> new OrderForUserDTO(order.getId(), order.getTotal(), totalProducts, order.isState(), order.getCreateDate()))
+                    .collect(Collectors.toList());
+
+            return orderForUsers;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
+    }
+
 
 }

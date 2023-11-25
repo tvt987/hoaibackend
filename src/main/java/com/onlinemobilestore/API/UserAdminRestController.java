@@ -1,8 +1,10 @@
 package com.onlinemobilestore.API;
 
+import com.onlinemobilestore.dto.OrderForUserDTO;
 import com.onlinemobilestore.entity.*;
 
 import com.onlinemobilestore.repository.*;
+import com.onlinemobilestore.service.serviceImpl.OrderServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin")
@@ -43,6 +46,8 @@ private UserRepository userRepository;
     DiscountRepository discountDAO;
     @Autowired
     private AuthenticationManager authenticationManager;
+    @Autowired
+    private OrderServiceImpl orderService;
 
 
     @Autowired
@@ -303,29 +308,11 @@ private UserRepository userRepository;
     }
 
     @GetMapping("/getOrders/{userId}")
-    public List<OrderForUser> getOrdersForUser(@PathVariable("userId") int userId){
-        try {
-            List<Order> orders = orderRepositoryz.findByUserId(userId);
-            List<OrderForUser> orderForUser = new ArrayList<OrderForUser>();
-
-            for(Order od : orders){
-                orderForUser.add(new OrderForUser(od.getId(), od.getTotal(), od.isState(), od.getCreateDate()));
-            }
-            return orderForUser;
-        } catch(Exception e){
-            return null;
-        }
+    public List<OrderForUserDTO> getOrdersForUser(@PathVariable("userId") int userId){
+        return orderService.getOrdersForUser(userId);
     }
 
-    @Data
-    @AllArgsConstructor
-    class OrderForUser{
-        private int id;
-        private Double total;
-        private boolean state;
-        private Date createDate;
 
-    }
     @Data
     @AllArgsConstructor
     class OrderDetailz{

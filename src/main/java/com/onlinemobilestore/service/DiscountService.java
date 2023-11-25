@@ -1,7 +1,6 @@
 package com.onlinemobilestore.service;
 
 import com.onlinemobilestore.entity.Discount;
-import com.onlinemobilestore.entity.OrderDetail;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -10,4 +9,11 @@ import java.util.List;
 public interface DiscountService {
     Discount findDiscountByName(String name);
 
+    List<Discount> findAll();
+
+    Discount createDiscount(Discount discount);
+
+    Discount updateDiscount(int discountId, Discount discount);
+
+    String deleteDiscount(int discountId);
 }

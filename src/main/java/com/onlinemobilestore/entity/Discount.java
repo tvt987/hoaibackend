@@ -12,7 +12,7 @@ public class Discount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Integer id;
     private String name;
     private float percent;
     private boolean isActive;
