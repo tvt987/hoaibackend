@@ -1,8 +1,10 @@
 package com.onlinemobilestore.API;
 
+import com.onlinemobilestore.dto.OrderForUserDTO;
 import com.onlinemobilestore.entity.*;
 
 import com.onlinemobilestore.repository.*;
+import com.onlinemobilestore.service.serviceImpl.OrderServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,6 +24,8 @@ import java.util.*;
 @RequestMapping("/admin")
 @CrossOrigin
 public class UserAdminRestController {
+    @Autowired
+    private OrderServiceImpl orderService;
 //    @Autowired
 //    private AuthenticationManager authenticationManager;trademarkRepository
 @Autowired
@@ -248,8 +252,10 @@ private UserRepository userRepository;
                     data.getId(),
                     data.getName(),
                     data.getPrice(),
+                    data.getPrice() * (100 - data.getPercentDiscount()) / 100,
                     data.getQuantity(),
                     data.getDescription(),
+                    data.getImages(),
                     data.getCreateDate(),
                     data.getModifiedDate(),
                     data.getPercentDiscount()
@@ -276,7 +282,7 @@ private UserRepository userRepository;
         }
     }
 
-    @PostMapping("/getOrderNew/{userId}/{productId}")
+        @PostMapping("/getOrderNew/{userId}/{productId}")
     public OrderDetailz getOrderNew(@PathVariable("userId") int userId ,
                                           @PathVariable("productId") int productId){
         try {
@@ -305,40 +311,30 @@ private UserRepository userRepository;
     }
 
     @GetMapping("/getOrders/{userId}")
-    public List<OrderForUser> getOrdersForUser(@PathVariable("userId") int userId){
-        try {
-            List<Order> orders = orderRepositoryz.findByUserId(userId);
-            List<OrderForUser> orderForUser = new ArrayList<OrderForUser>();
-
-            for(Order od : orders){
-                orderForUser.add(new OrderForUser(od.getId(), od.getTotal(), od.isState(), od.getCreateDate()));
-            }
-            return orderForUser;
-        } catch(Exception e){
-            return null;
-        }
+    public List<OrderForUserDTO> getOrdersForUser(@PathVariable("userId") int userId){
+        return orderService.getOrdersForUser(userId);
     }
 
-    @GetMapping("/deleteOrder/{idOrder}/{idUser}")
-    public List<OrderForUser> deleteOrder(@PathVariable Integer idOrder,
-                                          @PathVariable Integer idUser) {
-        List<OrderForUser> orderList = new ArrayList<>();
-        Order orderToDelete = orderRepositoryz.findByIdAndUserId(idOrder, idUser);
-        // Kiểm tra xem Order có tồn tại không
-        if (orderToDelete != null) {
-            // Nếu tồn tại, xóa bằng cách sử dụng hàm delete
-            orderRepositoryz.delete(orderToDelete);
-            // Tạo danh sách mới sau khi xóa
-            List<Order> remainingOrders = orderRepositoryz.findByUserId(idUser);
-            for (Order order : remainingOrders) {
-                orderList.add(new OrderForUser(order.getId(), order.getTotal(), order.isState(), order.getCreateDate()));
-            }
-        } else {
-            // Nếu không tồn tại, trả về danh sách trống
-            return orderList;
-        }
-        return orderList;
-    }
+//    @GetMapping("/deleteOrder/{idOrder}/{idUser}")
+//    public List<OrderForUser> deleteOrder(@PathVariable Integer idOrder,
+//                                          @PathVariable Integer idUser) {
+//        List<OrderForUser> orderList = new ArrayList<>();
+//        Order orderToDelete = orderRepositoryz.findByIdAndUserId(idOrder, idUser);
+//        // Kiểm tra xem Order có tồn tại không
+//        if (orderToDelete != null) {
+//            // Nếu tồn tại, xóa bằng cách sử dụng hàm delete
+//            orderRepositoryz.delete(orderToDelete);
+//            // Tạo danh sách mới sau khi xóa
+//            List<Order> remainingOrders = orderRepositoryz.findByUserId(idUser);
+//            for (Order order : remainingOrders) {
+//                orderList.add(new OrderForUser(order.getId(), order.getTotal(), order.isState(), order.getCreateDate()));
+//            }
+//        } else {
+//            // Nếu không tồn tại, trả về danh sách trống
+//            return orderList;
+//        }
+//        return orderList;
+//    }
 
     @GetMapping("/deleteOrderDetail/{idOrderDetail}/{idOrder}")
     public List<OrderDetailz> deleteOrderDetail(
@@ -353,7 +349,7 @@ private UserRepository userRepository;
             orderDetailRepository.deleteById(idOrderDetail);
 
             // Tạo danh sách mới sau khi xóa
-            for (OrderDetail od : orderDetailRepository.findAll()) {
+            for (OrderDetail od : orderDetailRepository.findAllByOrderId(idOrder)) {
                 orderDetailList.add(new OrderDetailz(od.getId(),
                         od.getProduct().getName(), od.getProduct().getImages(),
                         od.getPrice(), od.getQuantity(), od.getCreateDate()));
@@ -369,7 +365,9 @@ private UserRepository userRepository;
     class OrderForUser{
         private int id;
         private Double total;
+        private int quantity;
         private boolean state;
+        private int code;
         private Date createDate;
 
     }
@@ -389,19 +387,21 @@ private UserRepository userRepository;
 
 
 
-@Data
-@AllArgsConstructor
-class InformationBrand{
-    private int id;
-    private String name;
-    private double price;
-    private int quantity;
-    private String description;
-    private Date createDate;
-    private Date modifiedDate;
-    private int percentDiscount;
+    @Data
+    @AllArgsConstructor
+    class InformationBrand{
+        private int id;
+        private String name;
+        private double price;
+        private double priceUpdate;
+        private int quantity;
+        private String description;
+        private List<Image> images;
+        private Date createDate;
+        private Date modifiedDate;
+        private int percentDiscount;
 
-}
+    }
 
 
     @Data
