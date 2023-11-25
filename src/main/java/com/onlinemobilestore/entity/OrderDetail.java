@@ -1,11 +1,15 @@
 package com.onlinemobilestore.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "order_detail")
 public class OrderDetail {
 
@@ -29,9 +33,6 @@ public class OrderDetail {
     public OrderDetail(Object o, int i, double price, Date date, Date date1, int id, int id1) {
     }
 
-    public OrderDetail() {
-
-    }
 
     public int getId() {
         return id;

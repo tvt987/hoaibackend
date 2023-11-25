@@ -16,10 +16,25 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderDetailServiceImpl implements OrderDetailService {
+    @Autowired
+    DiscountServiceImpl discountService;
     private OrderDetailRepository orderDetailRepository;
     public OrderDetailServiceImpl(OrderDetailRepository orderDetailRepository) {
         this.orderDetailRepository = orderDetailRepository;
     }
 
 
+    @Override
+    public List<OrderDetail> getDiscountByNameAndOrderId(String name,int id) {
+        Discount discount = discountService.findDiscountByName(name);
+        List<OrderDetail> orderDetails = orderDetailRepository.findAllByOrderId(id);
+        orderDetails.stream().forEach(orderDetail -> {
+            if(orderDetail.getProduct().getId() == discount.getProduct().getId()){
+                double discountedPrice = orderDetail.getPrice() * (1 - (discount.getPercent() / 100.0));
+                orderDetail.setPrice(discountedPrice);
+            }
+        });
+
+        return orderDetails;
+    }
 }

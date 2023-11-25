@@ -5,46 +5,37 @@ import com.onlinemobilestore.entity.OrderDetail;
 import com.onlinemobilestore.repository.DiscountRepository;
 import com.onlinemobilestore.repository.OrderDetailRepository;
 import com.onlinemobilestore.service.serviceImpl.DiscountServiceImpl;
+import com.onlinemobilestore.service.serviceImpl.OrderDetailServiceImpl;
+import com.onlinemobilestore.service.serviceImpl.OrderServiceImpl;
 import com.onlinemobilestore.service.serviceImpl.ProductServiceImpl;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(value = "*")
 public class UserDiscountAPI {
     @Autowired
-    DiscountServiceImpl discountService;
+    OrderDetailServiceImpl orderDetailService;
     @Autowired
-    DiscountRepository discountRepository;
-    @Autowired
-    ProductServiceImpl productService;
-    @Autowired
-    OrderDetailRepository orderDetailRepository;
-
+    OrderServiceImpl orderService;
     @GetMapping("/discount/{name}/{orderId}")
-    public ResponseEntity<List<OrderDetail>> getDiscount(@PathVariable("name") String name,
-                                                         @PathVariable("orderId") int orderId) {
-        Discount discount = discountService.findDiscountByName(name);
-        if (discount == null) {
-            return ResponseEntity.notFound().build();
-        }
-        List<OrderDetail> orderDetails = orderDetailRepository.findAllByOrderId(orderId);
-        orderDetails.forEach(orderDetail -> {
-            if (orderDetail.getProduct().getId() == discount.getProduct().getId()) {
-                double discountedPrice = orderDetail.getPrice() * (1 - (discount.getPercent() / 100.0));
-                orderDetail.setPrice(discountedPrice);
-                orderDetailRepository.save(orderDetail);
-            }
-        });
-        return ResponseEntity.ok(orderDetails);
+    public ResponseEntity<List<OrderDetail>> getDiscount(@PathVariable("name") String name, @PathVariable("orderId") int orderId) {
+        return ResponseEntity.ok(orderDetailService.getDiscountByNameAndOrderId(name,orderId));
     }
-    
+
+    @PostMapping("/order/{userId}/{productId}")
+    public ResponseEntity<?> createOrder(@PathVariable("userId") int userId,
+                                         @PathVariable("productId") int productId){
+        return ResponseEntity.ok(orderService.createOrderAndOrderDetailByUserIdAndByProductId(userId,productId));
+
+    }
+
+
 
 }
