@@ -263,6 +263,7 @@ private UserRepository userRepository;
     public List<OrderDetailz> getOrder(@PathVariable("id") Integer id){
         try {
             List<OrderDetail> orderz = orderDetailRepository.findAllByOrderId(id);
+            System.out.println(orderz.size());
             List<OrderDetailz> orderDetail = new ArrayList<OrderDetailz>();
             for(OrderDetail od : orderz){
                 orderDetail.add(new OrderDetailz(od.getId(),
@@ -318,7 +319,52 @@ private UserRepository userRepository;
         }
     }
 
-    @Data
+    @GetMapping("/deleteOrder/{idOrder}/{idUser}")
+    public List<OrderForUser> deleteOrder(@PathVariable Integer idOrder,
+                                          @PathVariable Integer idUser) {
+        List<OrderForUser> orderList = new ArrayList<>();
+        Order orderToDelete = orderRepositoryz.findByIdAndUserId(idOrder, idUser);
+        // Kiểm tra xem Order có tồn tại không
+        if (orderToDelete != null) {
+            // Nếu tồn tại, xóa bằng cách sử dụng hàm delete
+            orderRepositoryz.delete(orderToDelete);
+            // Tạo danh sách mới sau khi xóa
+            List<Order> remainingOrders = orderRepositoryz.findByUserId(idUser);
+            for (Order order : remainingOrders) {
+                orderList.add(new OrderForUser(order.getId(), order.getTotal(), order.isState(), order.getCreateDate()));
+            }
+        } else {
+            // Nếu không tồn tại, trả về danh sách trống
+            return orderList;
+        }
+        return orderList;
+    }
+
+    @GetMapping("/deleteOrderDetail/{idOrderDetail}/{idOrder}")
+    public List<OrderDetailz> deleteOrderDetail(
+            @PathVariable Integer idOrderDetail,
+            @PathVariable Integer idOrder) {
+
+        List<OrderDetailz> orderDetailList = new ArrayList<>();
+
+        // Kiểm tra xem OrderDetail có tồn tại không
+        if (orderDetailRepository.existsById(idOrderDetail)) {
+            // Nếu tồn tại, xóa bằng cách sử dụng hàm deleteById
+            orderDetailRepository.deleteById(idOrderDetail);
+
+            // Tạo danh sách mới sau khi xóa
+            for (OrderDetail od : orderDetailRepository.findAll()) {
+                orderDetailList.add(new OrderDetailz(od.getId(),
+                        od.getProduct().getName(), od.getProduct().getImages(),
+                        od.getPrice(), od.getQuantity(), od.getCreateDate()));
+            }
+        } else {
+            return orderDetailList;
+        }
+        return orderDetailList;
+    }
+
+        @Data
     @AllArgsConstructor
     class OrderForUser{
         private int id;

@@ -2,11 +2,13 @@ package com.onlinemobilestore.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
 @Entity
 @Table(name = "order_detail")
+@NoArgsConstructor
 public class OrderDetail {
 
     @Id
