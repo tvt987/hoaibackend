@@ -1,14 +1,17 @@
 package com.onlinemobilestore.API;
 
 import com.onlinemobilestore.dto.OrderForUserDTO;
+import com.onlinemobilestore.dto.ProductInOrderDTO;
 import com.onlinemobilestore.entity.*;
 
 import com.onlinemobilestore.repository.*;
+import com.onlinemobilestore.service.serviceImpl.DiscountServiceImpl;
 import com.onlinemobilestore.service.serviceImpl.OrderServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -19,11 +22,16 @@ import org.springframework.web.bind.annotation.*;
 
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin")
 @CrossOrigin
 public class UserAdminRestController {
+    @Autowired
+    ProductRepository proDAO;
+    @Autowired
+    DiscountServiceImpl discountService;
     @Autowired
     private OrderServiceImpl orderService;
 //    @Autowired
@@ -53,10 +61,111 @@ private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @GetMapping("/getProducts/{nameProduct}/{ramId}")
+    public List<Information> getProductsByNameAndRamId(@PathVariable("nameProduct") String nameProduct,
+                                                       @PathVariable("ramId") Integer ramId) {
+        List<Product> products = proDAO.findByName(nameProduct);
+        List<Color> colors = products.stream().map(Product::getColor).collect(Collectors.toList());
+        List<Storage> storages = products.stream().map(Product::getStorage).collect(Collectors.toList());
+        List<Information> result = new ArrayList<>();
+
+        for (Product product : products) {
+            if (product.getStorage().getId() == ramId) {
+                DataProductDetail productDetail = new DataProductDetail(
+                        product.getId(),
+                        product.getName(),
+                        product.getPrice() * (1 - (product.getPercentDiscount() / 100)),
+                        product.getPrice(),
+                        product.getDiscounts(),
+                        product.getStorage(),
+                        product.getColor(),
+                        product.getImages(),
+                        product.getPreviews().stream().mapToDouble(Preview::getRate).average().orElse(0.0)
+                );
+
+                List<DataComment> dataComments = product.getPreviews().stream()
+                        .map(preview -> new DataComment(
+                                preview.getContent(),
+                                preview.getUser().getFullName(),
+                                preview.getUser().getAvatar(),
+                                preview.getUser().getId(),
+                                preview.getRate(),
+                                preview.getCreateDate(),
+                                preview.getRepPreviews().stream()
+                                        .map(repPreview -> new DataRepComment(
+                                                repPreview.getId(),
+                                                repPreview.getCreateDate(),
+                                                repPreview.getContent(),
+                                                repPreview.getAdmin().getFullName()
+                                        ))
+                                        .collect(Collectors.toList())
+                        ))
+                        .collect(Collectors.toList());
 
 
+                result.add(new Information(
+                        colors,
+                        storages,
+                        productDetail,
+                        dataComments
+                ));
+            }
+        }
 
+        return result;
+    }
 
+    @GetMapping("/getProductByRam/{ram}")
+    public List<ProductByRam> getInformationProduct(@PathVariable("ram") Integer ram) {
+        List<Product> products = productRepository.findByStorage_ReadOnlyMemoryValue(ram);
+        List<ProductByRam> result = products.stream().map(data -> {
+            List<String> imageList = Optional.ofNullable(data.getImages())
+                    .orElse(Collections.emptyList())
+                    .stream()
+                    .map(Image::getImageUrl)
+                    .collect(Collectors.toList());
+            List<DiscountProduct> discounts = Optional.ofNullable(data.getDiscounts())
+                    .orElse(Collections.emptyList())
+                    .stream()
+                    .map(discount -> new DiscountProduct(discount.getId(), discount.getName(), discount.getPercent(), discount.getExpirationDate()))
+                    .collect(Collectors.toList());
+            double priceOld = data.getPrice() * (100 - Optional.ofNullable(data.getPercentDiscount()).orElse(0));
+            double rate = Optional.ofNullable(data.getPreviews())
+                    .orElse(Collections.emptyList())
+                    .stream()
+                    .mapToDouble(Preview::getRate)
+                    .average()
+                    .orElse(0.0);
+            ProductDetail productDetail = new ProductDetail(data.getId(), data.getName(), data.getColor().getColor(), data.getPrice(), priceOld, data.getStorage(), rate);
+            List<Comment> commentList = Optional.ofNullable(data.getPreviews())
+                    .orElse(Collections.emptyList())
+                    .stream()
+                    .map(preview -> {
+                        List<RepComment> repCommentList = Optional.ofNullable(preview.getRepPreviews())
+                                .orElse(Collections.emptyList())
+                                .stream()
+                                .map(repPreview -> new RepComment(
+                                        repPreview.getId(),
+                                        repPreview.getCreateDate(),
+                                        repPreview.getContent(),
+                                        repPreview.getAdmin() != null ? repPreview.getAdmin().getFullName() : ""))
+                                .collect(Collectors.toList());
+
+                        return new Comment(
+                                preview.getId(),
+                                preview.getCreateDate(),
+                                preview.getRate(),
+                                preview.getContent(),
+                                preview.getUser() != null ? preview.getUser().getFullName() : "",
+                                repCommentList);
+                    })
+                    .collect(Collectors.toList());
+
+            return new ProductByRam(data.getId(), imageList, discounts, productDetail, commentList);
+        }).collect(Collectors.toList());
+
+        return result;
+    }
     @GetMapping("/account")
     public List<UserData> getAllAccount() {
         System.out.println("In thử trong api khác nè");
@@ -199,8 +308,8 @@ private UserRepository userRepository;
                         maxPrecent = discountBriefs.get(i);
                     }
                 }
-                jsonData.add(new DataProductHasDiscount(pro.getId(), pro.getName(), pro.getPrice(),
-                        (pro.getPrice() - pro.getPrice()*(maxPrecent.getPercent()/100)), discountBriefs));
+                jsonData.add(new DataProductHasDiscount(pro.getId(), pro.getImages() , pro.getName(), pro.getPrice(),
+                        Math.floor(pro.getPrice() - (pro.getPrice()*pro.getPercentDiscount()/100)), pro.getPercentDiscount(), discountBriefs));
             }
 
         }
@@ -221,8 +330,8 @@ private UserRepository userRepository;
         for (Product pro : data) {
             List<DiscountBrief> discountBriefs = new ArrayList<>();
             pro.getDiscounts().stream().forEach(dis -> discountBriefs.add(new DiscountBrief(dis.getName(), dis.getPercent(), dis.getExpirationDate(), dis.getCreateDate(), dis.isActive())));
-            jsonData.add(new DataProductHasDiscount(pro.getId(), pro.getName(),
-                    pro.getPrice(), (pro.getPrice() - pro.getPrice()*(pro.getPercentDiscount()/100)), discountBriefs));
+            jsonData.add(new DataProductHasDiscount(pro.getId(), pro.getImages(), pro.getName(),
+                    pro.getPrice(), (pro.getPrice() - pro.getPrice()*(pro.getPercentDiscount()/100)), pro.getPercentDiscount(), discountBriefs));
         }
         return jsonData;
     }
@@ -246,19 +355,31 @@ private UserRepository userRepository;
     @GetMapping("/getInformationBrand/{id}")
     public List<InformationBrand> getInformationBrand(@PathVariable("id") int id) {
         List<Product> productList = productRepository.findByTrademarkId(id);
+        List<Product> productListStore = new ArrayList<Product>();
+
         List<InformationBrand> informationBrandList = new ArrayList<>();
+        float maxPercent = 0;
         for (Product data : productList) {
+            List<Storage> storages = new ArrayList<Storage>();
+            productListStore = data.getCategory().getProducts();
+            productListStore.stream().forEach(productDetail -> {
+                storages.add(productDetail.getStorage());
+            });
+            if(data.getDiscounts().size() > 0){
+                maxPercent = data.getDiscounts().get(0).getPercent();
+            }
             InformationBrand informationBrand = new InformationBrand(
                     data.getId(),
                     data.getName(),
                     data.getPrice(),
-                    data.getPrice() * (100 - data.getPercentDiscount()) / 100,
+                    Math.floor((data.getPrice() * (100 - data.getPercentDiscount()) / 100) ),
                     data.getQuantity(),
                     data.getDescription(),
                     data.getImages(),
                     data.getCreateDate(),
                     data.getModifiedDate(),
-                    data.getPercentDiscount()
+                    data.getPercentDiscount(),
+                    storages
             );
             informationBrandList.add(informationBrand);
         }
@@ -269,12 +390,11 @@ private UserRepository userRepository;
     public List<OrderDetailz> getOrder(@PathVariable("id") Integer id){
         try {
             List<OrderDetail> orderz = orderDetailRepository.findAllByOrderId(id);
-            System.out.println(orderz.size());
             List<OrderDetailz> orderDetail = new ArrayList<OrderDetailz>();
             for(OrderDetail od : orderz){
-                orderDetail.add(new OrderDetailz(od.getId(),
+                orderDetail.add(new OrderDetailz(od.getId(), od.getOrder().isState(),
                          od.getProduct().getName(),od.getProduct().getImages(),
-                        od.getPrice(), od.getQuantity(), od.getCreateDate()));
+                        od.getPrice(), od.getQuantity(), od.getCreateDate(), od.getProduct().getDiscounts(), od.getProduct().getId()));
             }
             return orderDetail;
         } catch(Exception e) {
@@ -282,32 +402,10 @@ private UserRepository userRepository;
         }
     }
 
-        @PostMapping("/getOrderNew/{userId}/{productId}")
-    public OrderDetailz getOrderNew(@PathVariable("userId") int userId ,
-                                          @PathVariable("productId") int productId){
-        try {
-            Product product = productRepository.findById(productId).get();
-            Optional<User> user = userRepository.findById(userId);
-
-            if(user.get() != null){
-                Order order = new Order(null, product.getPrice(), new Date(), new Date(), 0, userId);
-                orderRepositoryz.save(order);
-                int id = orderRepositoryz.findAll().size();
-                OrderDetail orderDetail = new OrderDetail(null, 1, product.getPrice(), new Date(),
-                        new Date(), id, product.getId());
-                orderDetailRepository.save(orderDetail);
-                int id1 = orderDetailRepository.findAll().size();
-
-
-              return new OrderDetailz(id1, product.getName(), product.getImages(),
-                      product.getPrice(), product.getQuantity(), new Date());
-
-            }
-            return null;
-
-        } catch(Exception e) {
-            return null;
-        }
+        @GetMapping ("/getOrderNew/{userId}/{productId}")
+    public ProductInOrderDTO getOrderNew(@PathVariable("userId") int userId ,
+                                         @PathVariable("productId") int productId){
+       return orderService.createOrderAndOrderDetailByUserIdAndByProductId(userId, productId);
     }
 
     @GetMapping("/getOrders/{userId}")
@@ -315,26 +413,22 @@ private UserRepository userRepository;
         return orderService.getOrdersForUser(userId);
     }
 
-//    @GetMapping("/deleteOrder/{idOrder}/{idUser}")
-//    public List<OrderForUser> deleteOrder(@PathVariable Integer idOrder,
-//                                          @PathVariable Integer idUser) {
-//        List<OrderForUser> orderList = new ArrayList<>();
-//        Order orderToDelete = orderRepositoryz.findByIdAndUserId(idOrder, idUser);
-//        // Kiểm tra xem Order có tồn tại không
-//        if (orderToDelete != null) {
-//            // Nếu tồn tại, xóa bằng cách sử dụng hàm delete
-//            orderRepositoryz.delete(orderToDelete);
-//            // Tạo danh sách mới sau khi xóa
-//            List<Order> remainingOrders = orderRepositoryz.findByUserId(idUser);
-//            for (Order order : remainingOrders) {
-//                orderList.add(new OrderForUser(order.getId(), order.getTotal(), order.isState(), order.getCreateDate()));
-//            }
-//        } else {
-//            // Nếu không tồn tại, trả về danh sách trống
-//            return orderList;
-//        }
-//        return orderList;
-//    }
+    @GetMapping("/deleteOrder/{idOrder}/{idUser}")
+    public List<OrderForUserDTO> deleteOrder(@PathVariable Integer idOrder,
+                                          @PathVariable Integer idUser) {
+        List<OrderForUserDTO> orderList = new ArrayList<>();
+        Order orderToDelete = orderRepositoryz.findByIdAndUserId(idOrder, idUser);
+        // Kiểm tra xem Order có tồn tại không
+        if (orderToDelete != null) {
+            // Nếu tồn tại, xóa bằng cách sử dụng hàm delete
+            orderRepositoryz.delete(orderToDelete);
+            // Tạo danh sách mới sau khi xóa
+            return orderService.getOrdersForUser(idUser);
+        } else {
+            // Nếu không tồn tại, trả về danh sách trống
+            return  null;
+        }
+    }
 
     @GetMapping("/deleteOrderDetail/{idOrderDetail}/{idOrder}")
     public List<OrderDetailz> deleteOrderDetail(
@@ -350,9 +444,10 @@ private UserRepository userRepository;
 
             // Tạo danh sách mới sau khi xóa
             for (OrderDetail od : orderDetailRepository.findAllByOrderId(idOrder)) {
-                orderDetailList.add(new OrderDetailz(od.getId(),
+
+                orderDetailList.add(new OrderDetailz(od.getId(),od.getOrder().isState(),
                         od.getProduct().getName(), od.getProduct().getImages(),
-                        od.getPrice(), od.getQuantity(), od.getCreateDate()));
+                        od.getPrice(), od.getQuantity(), od.getCreateDate(), od.getProduct().getDiscounts(), od.getProduct().getId()));
             }
         } else {
             return orderDetailList;
@@ -360,6 +455,85 @@ private UserRepository userRepository;
         return orderDetailList;
     }
 
+    @GetMapping("/api/discount/{name}/{orderId}")
+    public ResponseEntity<List<OrderDetail>> getDiscount(@PathVariable("name") String name,
+                                                         @PathVariable("orderId") int orderId) {
+        Discount discount = discountService.findDiscountByName(name);
+        if (discount == null) {
+            return ResponseEntity.notFound().build();
+        }
+        List<OrderDetail> orderDetails = orderDetailRepository.findAllByOrderId(orderId);
+        orderDetails.forEach(orderDetail -> {
+            if (orderDetail.getProduct().getId() == discount.getProduct().getId()) {
+                double discountedPrice = orderDetail.getPrice() * (1 - (discount.getPercent() / 100.0));
+                orderDetail.setPrice(discountedPrice);
+                orderDetailRepository.save(orderDetail);
+            }
+        });
+        return ResponseEntity.ok(orderDetails);
+    }
+
+
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    class ProductByRam {
+        private Integer id;
+        private List<String> imageList;
+        private List<DiscountProduct> discountProducts;
+        private ProductDetail productDetail;
+        private List<Comment> commentList;
+    }
+    @Data
+    @AllArgsConstructor
+    class DiscountProduct {
+        private Integer id;
+        private String name;
+        private double percent;
+        private Date expirationDate;
+    }
+
+    @Data
+    @AllArgsConstructor
+    class ProductDetail {
+        private int id;
+        private String name;
+        private String color;
+        private double priceNew;
+        private double priceOld;
+        private Storage storage;
+        private double rate;
+    }
+
+    @Data
+    @AllArgsConstructor
+    class Comment {
+        private int id;
+        private Date createDate;
+        private double rate;
+        private String content;
+        private String userName;
+        private List<RepComment> repCommentList;
+    }
+
+    @Data
+    @AllArgsConstructor
+    class RepComment {
+        private int id;
+        private Date createDate;
+        private String content;
+        private String adminName;
+    }
+
+    @Data
+    @AllArgsConstructor
+    class Information {
+        private List<Color> colors;
+        private List<Storage> storages;
+        private DataProductDetail dataProductDetail;
+        private List<DataComment> commentList;
+    }
         @Data
     @AllArgsConstructor
     class OrderForUser{
@@ -375,11 +549,14 @@ private UserRepository userRepository;
     @AllArgsConstructor
     class OrderDetailz{
         private int id;
+        private boolean state;
         private String name;
         private List<Image> images;
         private double price;
         private int quantity;
         private Date createDate;
+        private List<Discount> discounts;
+        private int idProduct;
 
     }
 
@@ -399,7 +576,8 @@ private UserRepository userRepository;
         private List<Image> images;
         private Date createDate;
         private Date modifiedDate;
-        private int percentDiscount;
+        private float percentDiscount;
+        private List<Storage> storages;
 
     }
 
@@ -408,9 +586,11 @@ private UserRepository userRepository;
     @AllArgsConstructor
     class DataProductHasDiscount {
         private Integer id;
+        private List<Image> images;
         private String name;
         private Double price;
         private Double priceUpdate;
+        private int percentDiscount;
         private List<DiscountBrief> discount;
     }
     @Data
@@ -427,7 +607,6 @@ private UserRepository userRepository;
 
 
 //    End
-
 
 
 

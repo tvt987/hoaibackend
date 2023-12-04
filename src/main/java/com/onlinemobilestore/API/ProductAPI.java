@@ -1,14 +1,24 @@
 package com.onlinemobilestore.API;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.onlinemobilestore.entity.*;
 import com.onlinemobilestore.repository.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -16,6 +26,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin")
 public class ProductAPI {
+//    Begin test
+
+//    End Test
+
     @Autowired
     ProductRepository proDAO;
     @Autowired
@@ -45,12 +59,13 @@ public class ProductAPI {
     public Information getInformationProduct(@PathVariable("id") Integer id) {
         Product data = proDAO.findById(id).get();
         List<Product> productList = data.getCategory().getProducts();
+        System.out.println(productList.size());
         List<Color> colorList = new ArrayList<>();
         List<Storage> storageList = new ArrayList<>();
         List<DataComment> commentList = new ArrayList<>();
         data.getPreviews().stream().forEach(preview -> {
             List<DataRepComment> repCommentList = new ArrayList<>();
-            preview.getRepPreviews().stream().forEach(repPreview -> repCommentList.add(new DataRepComment(repPreview.getContent(), repPreview.getAdmin().getFullName(), repPreview.getCreateDate())));
+            preview.getRepPreviews().stream().forEach(repPreview -> repCommentList.add(new DataRepComment(repPreview.getId(), repPreview.getCreateDate(), repPreview.getContent(), repPreview.getAdmin().getFullName())));
             commentList.add(new DataComment(preview.getContent(), preview.getUser().getFullName(), preview.getUser().getAvatar(), preview.getUser().getId(), preview.getRate(), preview.getCreateDate(), repCommentList));
         });
         productList.stream().forEach(productDetail -> {
@@ -62,6 +77,8 @@ public class ProductAPI {
         DataProductDetail dataProductDetail = new DataProductDetail(data.getId(), data.getName(), data.getPrice() * (100 - data.getPercentDiscount()), data.getPrice(), data.getDiscounts(), data.getStorage(), data.getColor(), data.getImages(), rate);
         return new Information(colorList, storageList, dataProductDetail, commentList);
     }
+
+
 }
 @Data
 @AllArgsConstructor
@@ -101,9 +118,10 @@ class DataComment {
 @Data
 @AllArgsConstructor
 class DataRepComment {
-    private String content;
-    private String nameAdmin;
+    private int id;
     private Date createDate;
+    private String content;
+    private String fullName;
 }
 
 
